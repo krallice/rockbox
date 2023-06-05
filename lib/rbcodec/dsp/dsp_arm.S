@@ -584,7 +584,9 @@ filter_process:
     @ It's really noone's business how we do this
 .fp_channelloop:
     ldmia   r0, { r9-r12 }          @ load history, r0 = history[channels-ch-1]
-    ldr     r3, [r1, r3, lsl #2]    @ r3 = buf[ch]
+    @ Modified:
+    @ ldr     r3, [r1, r3, lsl #2]    @ r3 = buf[ch]
+    ldr       r3, [r1, #4]    @ r3 = buf[1] = modify R channel ONLY
 
     @ r9-r12 = history, r4-r8 = coefs, r0..r1 = accumulator,
     @ r2 = number of samples, r3 = buf[ch], r14 = shift amount
