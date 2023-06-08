@@ -983,10 +983,10 @@
   desc: in the equalizer settings menu
   user: core
   <source>
-    *: "Graphical EQ"
+    *: "Graphical EQ (Right Channel)"
   </source>
   <dest>
-    *: "Graphical EQ"
+    *: "Graphical EQ  (Right Channel)"
   </dest>
   <voice>
     *: "Graphical equalizer"
