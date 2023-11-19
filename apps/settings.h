@@ -361,7 +361,10 @@ struct user_settings
     /* EQ */
     bool eq_enabled;            /* Enable equalizer */
     unsigned int eq_precut;     /* dB */
-    struct eq_band_setting eq_band_settings[EQ_NUM_BANDS]; /* for each band */
+    struct eq_band_setting eq_band_settings[EQ_NUM_BANDS]; /* TO BE DEPRECATED - for each band */
+
+    struct eq_band_setting eq_band_settings_L[EQ_NUM_BANDS]; /* left channel EQ */
+    struct eq_band_setting eq_band_settings_R[EQ_NUM_BANDS]; /* right channel EQ */
 
     /* Misc. swcodec */
     int  beep;              /* system beep volume when changing tracks etc. */

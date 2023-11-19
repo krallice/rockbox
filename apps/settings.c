@@ -1023,7 +1023,9 @@ void settings_apply(bool read_disk)
     dsp_eq_enable(global_settings.eq_enabled);
     dsp_set_eq_precut(global_settings.eq_precut);
     for(int i = 0; i < EQ_NUM_BANDS; i++) {
-        dsp_set_eq_coefs(i, &global_settings.eq_band_settings[i]);
+        dsp_set_eq_coefs(i, &global_settings.eq_band_settings[i]); // To Deprecate
+        // dsp_set_eq_coefs(i, &global_settings.eq_band_settings_L[i]);
+        // dsp_set_eq_coefs(i, &global_settings.eq_band_settings_R[i]);
     }
 
     dsp_dither_enable(global_settings.dithering_enabled);

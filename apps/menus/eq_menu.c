@@ -767,6 +767,192 @@ int eq_menu_graphical(void)
     return (result) ? 1 : 0;
 }
 
+int eq_menu_graphical_left(void)
+{
+    bool exit_request = false;
+    bool result = true;
+    bool has_changed = false;
+    int button;
+    int *setting;
+    int current_band, x, y, step, fast_step, min, max;
+    enum eq_slider_mode mode;
+    int h, height, start_item, nb_eq_sliders[NB_SCREENS];
+    FOR_NB_SCREENS(i)
+        viewportmanager_theme_enable(i, false, NULL);
+
+
+    FOR_NB_SCREENS(i) {
+        screens[i].set_viewport(NULL);
+        screens[i].setfont(FONT_SYSFIXED);
+        screens[i].clear_display();
+
+        /* Figure out how many sliders can be drawn on the screen */
+        h = screens[i].getcharheight();
+
+        /* Total height includes margins (1), text, slider, and line selector (1) */
+        height = 3 + h + 1 + SCROLLBAR_SIZE + 3;
+        nb_eq_sliders[i] = screens[i].lcdheight / height;
+
+        /* Make sure the "Edit Mode" text fits too */
+        height = nb_eq_sliders[i]*height + h + 2;
+        if (height > screens[i].lcdheight)
+            nb_eq_sliders[i]--;
+
+        if (nb_eq_sliders[i] > EQ_NUM_BANDS)
+            nb_eq_sliders[i] = EQ_NUM_BANDS;
+    }
+
+    y = h + 1;
+
+    /* Start off editing gain on the first band */
+    mode = GAIN;
+    current_band = 0;
+
+    while (!exit_request) {
+        FOR_NB_SCREENS(i)
+        {
+            screens[i].clear_display();
+
+            /* Set pointer to the band data currently editable */
+            if (mode == GAIN) {
+                /* gain */
+                setting = &global_settings.eq_band_settings_L[current_band].gain;
+
+                step = EQ_GAIN_STEP;
+                fast_step = EQ_GAIN_FAST_STEP;
+                min = EQ_GAIN_MIN;
+                max = EQ_GAIN_MAX;
+
+                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                         str(LANG_SYSFONT_GAIN), "(dB)");
+            } else if (mode == CUTOFF) {
+                /* cutoff */
+                setting = &global_settings.eq_band_settings_L[current_band].cutoff;
+
+                step = EQ_CUTOFF_STEP;
+                fast_step = EQ_CUTOFF_FAST_STEP;
+                min = EQ_CUTOFF_MIN;
+                max = EQ_CUTOFF_MAX;
+
+                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                         str(LANG_SYSFONT_EQUALIZER_BAND_CUTOFF), "(Hz)");
+            } else {
+                /* Q */
+                setting = &global_settings.eq_band_settings_L[current_band].q;
+
+                step = EQ_Q_STEP;
+                fast_step = EQ_Q_FAST_STEP;
+                min = EQ_Q_MIN;
+                max = EQ_Q_MAX;
+
+                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                         str(LANG_SYSFONT_EQUALIZER_BAND_Q), "");
+            }
+
+            /* Draw scrollbar if needed */
+            if (nb_eq_sliders[i] != EQ_NUM_BANDS)
+            {
+                if (current_band == 0) {
+                    start_item = 0;
+                } else if (current_band == EQ_NUM_BANDS - 1) {
+                    start_item = EQ_NUM_BANDS - nb_eq_sliders[i];
+                } else {
+                    start_item = current_band - 1;
+                }
+                x = SCROLLBAR_SIZE;
+            } else {
+                x = 1;
+                start_item = 0;
+            }
+            /* Draw equalizer band details */
+            draw_eq_sliders(&screens[i], x, y, nb_eq_sliders[i], start_item,
+                            current_band, mode);
+
+            screens[i].update();
+        }
+
+        button = get_action(CONTEXT_SETTINGS_EQ,TIMEOUT_BLOCK);
+
+        switch (button) {
+        case ACTION_SETTINGS_DEC:
+        case ACTION_SETTINGS_DECREPEAT:
+            *(setting) -= step;
+            has_changed = true;
+            if (*(setting) < min)
+                *(setting) = min;
+            break;
+
+        case ACTION_SETTINGS_INC:
+        case ACTION_SETTINGS_INCREPEAT:
+            *(setting) += step;
+            has_changed = true;
+            if (*(setting) > max)
+                *(setting) = max;
+            break;
+
+        case ACTION_SETTINGS_INCBIGSTEP:
+            *(setting) += fast_step;
+            has_changed = true;
+            if (*(setting) > max)
+                *(setting) = max;
+            break;
+
+        case ACTION_SETTINGS_DECBIGSTEP:
+            *(setting) -= fast_step;
+            has_changed = true;
+            if (*(setting) < min)
+                *(setting) = min;
+            break;
+
+        case ACTION_STD_PREV:
+        case ACTION_STD_PREVREPEAT:
+            current_band--;
+            if (current_band < 0)
+                current_band = EQ_NUM_BANDS - 1; /* wrap around */
+            break;
+
+        case ACTION_STD_NEXT:
+        case ACTION_STD_NEXTREPEAT:
+            current_band = (current_band + 1) % EQ_NUM_BANDS;
+            break;
+
+        case ACTION_STD_OK:
+            mode++;
+            if (mode > Q)
+                mode = GAIN; /* wrap around */
+            break;
+
+        case ACTION_STD_CANCEL:
+            exit_request = true;
+            result = false;
+            break;
+        default:
+            if(default_event_handler(button) == SYS_USB_CONNECTED) {
+                exit_request = true;
+                result = true;
+            }
+            break;
+        }
+
+        /* Update the filter if the user changed something */
+        if (has_changed) {
+            dsp_set_eq_coefs(current_band,
+                &global_settings.eq_band_settings_L[current_band]);
+            has_changed = false;
+        }
+    }
+
+    /* Reset screen settings */
+    FOR_NB_SCREENS(i)
+    {
+        screens[i].setfont(FONT_UI);
+        screens[i].clear_display();
+        screens[i].set_viewport(NULL);
+        viewportmanager_theme_undo(i, false);
+    }
+    return (result) ? 1 : 0;
+}
+
 static int eq_save_preset(void)
 {
     /* make sure that the eq is enabled for setting saving */
